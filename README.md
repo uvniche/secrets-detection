@@ -14,6 +14,8 @@ This repository demonstrates a **GitHub Actions** pipeline that runs on every pu
 
 Workflow file: [`.github/workflows/security-ci.yml`](.github/workflows/security-ci.yml).
 
+The Gitleaks job installs the [official CLI](https://github.com/gitleaks/gitleaks) and scans the full git history. It avoids [`gitleaks/gitleaks-action`](https://github.com/gitleaks/gitleaks-action)’s default push range (`before^..after`), which breaks when the push’s `before` commit is the **root** commit—`before^` does not exist, so Git reports `unknown revision` and the action exits with an error even when no leaks are found.
+
 ## Sample application
 
 A minimal [FastAPI](https://fastapi.tiangolo.com/) service under `src/secure_api/` loads configuration with **Pydantic Settings** from the environment (`API_KEY`, etc.). There are **no secrets in source control** — only `.env.example` with empty placeholders.

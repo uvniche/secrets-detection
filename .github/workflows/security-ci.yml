@@ -18,9 +18,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+
+      # Full-repo scan (not gitleaks/gitleaks-action push-range mode). The action
+      # runs `git log before^..after`; when `before` is the root commit, `before^`
+      # does not exist and the job fails with "unknown revision".
+      - name: Install Gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.24.3"
+        run: |
+          set -euo pipefail
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tgz
+          tar -xzf gitleaks.tgz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+          gitleaks version
+
+      - name: Run Gitleaks
+        run: gitleaks detect --source . --redact --verbose --exit-code 2
 
   python-security:
     name: Python tests, Bandit, pip-audit
