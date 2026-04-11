@@ -35,6 +35,8 @@ uvicorn secure_api.main:app --reload --app-dir src
 
 ## Docker
 
+The image runs `apt-get upgrade` during build so the Debian/OpenSSL layer matches published security fixes (otherwise Trivy can fail on **fixed** HIGH CVEs that are not yet in the slim base tag).
+
 ```bash
 docker build -t secure-api-demo .
 docker run --rm -e API_KEY=dev-secret -p 8000:8000 secure-api-demo
