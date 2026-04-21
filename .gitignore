@@ -42,3 +42,6 @@ htmlcov/
 
 # Trivy
 trivy-results.*
+
+# Local presentation file
+main.tex
