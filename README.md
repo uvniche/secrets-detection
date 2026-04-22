@@ -36,9 +36,22 @@ pip install pip-audit && pip-audit -r requirements.txt
 
 ## Demonstrating “detect → fix → pass”
 
-1. **Trigger a failure:** Commit a realistic secret pattern (e.g. a fake `AWS_SECRET_ACCESS_KEY=...` in a tracked file). Push a branch and open a PR — **Gitleaks** should fail.
-2. **Fix:** Remove the secret, rotate any real credential that was ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform’s secret store.
-3. **Verify:** Push again — the pipeline should go green.
+Because this workflow scans **full git history**, any secret-like value committed once can keep failing later runs on that branch even after deletion.
+
+For a safe live demo in this repository:
+
+1. **Trigger a failure:** Add a harmless marker string that still matches a gitleaks rule (avoid realistic key material), push a demo branch, and open a PR.
+2. **Show detection:** Confirm the Gitleaks job fails in Actions.
+3. **Fix:** Delete the demo file, commit, and push.
+4. **Verify:** Explain that full-history scanning still sees earlier commits in the branch; close/delete the demo branch after the presentation.
+
+Recommended demo marker (intentionally fake placeholder):
+
+```text
+AWS_SECRET_ACCESS_KEY=<FAKE_DEMO_VALUE_DO_NOT_USE>
+```
+
+Always rotate immediately if a real secret is ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform secret store for runtime values.
 
 ## GitHub setup
 
