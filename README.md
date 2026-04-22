@@ -10,7 +10,7 @@ This repository demonstrates a **GitHub Actions** pipeline that runs on every pu
 | **Secrets scan**    | [Gitleaks](https://github.com/gitleaks/gitleaks) | Detects API keys, tokens, and other secrets in git history                      |
 | **Python security** | [Bandit](https://github.com/PyCQA/bandit)        | Static analysis for common Python security mistakes                             |
 | **Dependencies**    | [pip-audit](https://pypi.org/project/pip-audit/) | Reports known vulnerabilities in pinned dependencies                            |
-| **Tests**           | pytest                                           | Basic API tests                                                                 |
+| **Tests**           | pytest                                           | Unit tests for local security helpers                                           |
 | **Filesystem scan** | [Trivy](https://github.com/aquasecurity/trivy)   | Scans the repository filesystem for OS/library CVEs (CRITICAL/HIGH, fixed only) |
 
 
@@ -18,9 +18,9 @@ Workflow file: `[.github/workflows/security-ci.yml](.github/workflows/security-c
 
 The Gitleaks job installs the [official CLI](https://github.com/gitleaks/gitleaks) and scans the full git history. It avoids `[gitleaks/gitleaks-action](https://github.com/gitleaks/gitleaks-action)`’s default push range (`before^..after`), which breaks when the push’s `before` commit is the **root** commit—`before^` does not exist, so Git reports `unknown revision` and the action exits with an error even when no leaks are found.
 
-## Sample application
+## Sample code
 
-A minimal [FastAPI](https://fastapi.tiangolo.com/) service under `src/secure_api/` loads configuration with **Pydantic Settings** from the environment (`API_KEY`, etc.). There are **no secrets in source control** — only `.env.example` with empty placeholders.
+The sample Python package under `src/secure_api/` contains simple security-focused helpers (for example, secret redaction). It is intentionally minimal so the focus stays on CI security gates.
 
 ## Local development
 
@@ -28,24 +28,23 @@ A minimal [FastAPI](https://fastapi.tiangolo.com/) service under `src/secure_api
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
-cp .env.example .env       # set API_KEY locally if you want /protected
+cp .env.example .env       # optional local env values for experiments
 pytest -q
 bandit -r src -c pyproject.toml
 pip install pip-audit && pip-audit -r requirements.txt
-uvicorn secure_api.main:app --reload --app-dir src
 ```
 
 ## Demonstrating “detect → fix → pass”
 
 1. **Trigger a failure:** Commit a realistic secret pattern (e.g. a fake `AWS_SECRET_ACCESS_KEY=...` in a tracked file). Push a branch and open a PR — **Gitleaks** should fail.
-2. **Fix:** Remove the secret, rotate any real credential that was ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform’s secret store; load them at runtime as environment variables (as this app does with `API_KEY`).
+2. **Fix:** Remove the secret, rotate any real credential that was ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform’s secret store.
 3. **Verify:** Push again — the pipeline should go green.
 
 ## GitHub setup
 
 1. Create a repository on GitHub and push this project.
 2. Ensure **Actions** are enabled (repository **Settings → Actions**).
-3. Optional: add a repository secret named `API_KEY` if you later add a deploy job that needs it.
+3. Optional: add repository secrets if you later add deploy/runtime jobs that require them.
 
 ## Requirements
 

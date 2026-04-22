@@ -1,19 +1,13 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+def mask_secret(value: str, visible_suffix: int = 4) -> str:
+    """Return a redacted view of a secret while keeping a short suffix."""
+    if visible_suffix < 0:
+        raise ValueError("visible_suffix must be non-negative")
 
+    if not value:
+        return ""
 
-class Settings(BaseSettings):
-    """Load secrets from environment — never hardcode API keys in source."""
+    if len(value) <= visible_suffix:
+        return "*" * len(value)
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
-
-    app_name: str = "Secure API Demo"
-    # Example: set API_KEY in GitHub Secrets / deployment env, not in git
-    api_key: str = ""
-
-
-def get_settings() -> Settings:
-    return Settings()
+    hidden_len = len(value) - visible_suffix
+    return ("*" * hidden_len) + value[-visible_suffix:]
