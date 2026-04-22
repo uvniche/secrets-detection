@@ -36,9 +36,36 @@ pip install pip-audit && pip-audit -r requirements.txt
 
 ## Demonstrating “detect → fix → pass”
 
-1. **Trigger a failure:** Commit a realistic secret pattern (e.g. a fake `AWS_SECRET_ACCESS_KEY=...` in a tracked file). Push a branch and open a PR — **Gitleaks** should fail.
-2. **Fix:** Remove the secret, rotate any real credential that was ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform’s secret store.
-3. **Verify:** Push again — the pipeline should go green.
+### Live demo script (copy/paste)
+
+```bash
+# 1) Create demo branch
+git checkout -b demo-detect-fix-pass
+
+# 2) Trigger failure with a realistic fake secret pattern
+printf "AWS_SECRET_ACCESS_KEY=ABCD1234EFGH5678IJKL9012MNOP3456QRST7890\n" > demo-secret.txt
+git add demo-secret.txt
+git commit -m "demo: add fake secret"
+git push -u origin demo-detect-fix-pass
+```
+
+Open a PR to `main` and show that **Gitleaks** fails in GitHub Actions.
+
+```bash
+# 3) Fix by removing the leaked file
+rm demo-secret.txt
+git add -u
+git commit -m "demo: remove fake secret"
+git push
+```
+
+Refresh the PR checks and show that the pipeline passes.
+
+### Talk track
+
+1. **Detect:** CI catches committed secret-like patterns automatically.
+2. **Fix:** Remove the secret from tracked files (and rotate if it were real).
+3. **Pass:** Push the fix; CI reruns and merge gate turns green.
 
 ## GitHub setup
 
