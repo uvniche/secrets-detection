@@ -54,7 +54,7 @@ Live demo commands:
 git checkout main
 git pull
 git checkout -b demo-detect
-printf "AWS_SECRET_ACCESS_KEY=ABCD1234EFGH5678IJKL9012MNOP3456QRST7890\n" > demo-secret.txt
+printf "AWS_SECRET_ACCESS_KEY_EXAMPLE=ABCD1234EFGH5678IJKL9012MNOP3456QRST7890\n" > demo-secret.txt
 git add demo-secret.txt
 git commit -m "demo: add detectable secret pattern"
 git push -u origin demo-detect

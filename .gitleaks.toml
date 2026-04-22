@@ -1,0 +1,12 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Allow intentional fake AWS key used in documentation demo flow"
+regexes = [
+  '''AWS_SECRET_ACCESS_KEY=ABCD1234EFGH5678IJKL9012MNOP3456QRST7890''',
+]
+paths = [
+  '''^README\.md$''',
+  '''^demo-secret\.txt$''',
+]
