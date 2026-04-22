@@ -36,19 +36,44 @@ pip install pip-audit && pip-audit -r requirements.txt
 
 ## Demonstrating “detect → fix → pass”
 
-Because this workflow scans **full git history**, any secret-like value committed once can keep failing later runs on that branch even after deletion.
+Because this workflow scans **full git history**, a committed secret pattern can keep failing later runs on that same branch even after deletion.
 
-For a safe live demo in this repository:
+Use this exact flow (matches how this repo is being demonstrated):
 
-1. **Trigger a failure:** Add a harmless marker string that still matches a gitleaks rule (avoid realistic key material), push a demo branch, and open a PR.
+1. **Detect:** Create and push a branch named `demo-detect` with a demo file containing a detectable fake secret pattern.
 2. **Show detection:** Confirm the Gitleaks job fails in Actions.
-3. **Fix:** Delete the demo file, commit, and push.
-4. **Verify:** Explain that full-history scanning still sees earlier commits in the branch; close/delete the demo branch after the presentation.
+3. **Fix:** Delete the demo file and commit the removal.
+4. **Pass (operational remediation):** Open a clean branch from `main` (without leaked commit history) and show checks passing there.
+5. **Cleanup:** Delete demo branches after presentation.
 
-Recommended demo marker (intentionally fake placeholder):
+Live demo commands:
 
-```text
-AWS_SECRET_ACCESS_KEY=<FAKE_DEMO_VALUE_DO_NOT_USE>
+```bash
+# Detect
+git checkout main
+git pull
+git checkout -b demo-detect
+printf "AWS_SECRET_ACCESS_KEY=ABCD1234EFGH5678IJKL9012MNOP3456QRST7890\n" > demo-secret.txt
+git add demo-secret.txt
+git commit -m "demo: add detectable secret pattern"
+git push -u origin demo-detect
+
+# Fix on same branch
+rm demo-secret.txt
+git add -u
+git commit -m "demo: remove fake secret"
+git push
+
+# Pass from clean branch
+git checkout main
+git pull
+git checkout -b demo-clean-pass
+git push -u origin demo-clean-pass
+
+# Cleanup
+git checkout main
+git branch -D demo-detect demo-clean-pass
+git push origin --delete demo-detect demo-clean-pass
 ```
 
 Always rotate immediately if a real secret is ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform secret store for runtime values.
