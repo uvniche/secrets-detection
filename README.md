@@ -34,7 +34,7 @@ bandit -r src -c pyproject.toml
 pip install pip-audit && pip-audit -r requirements.txt
 ```
 
-## Demonstrating “detect → fix → pass”
+## Demonstrating “detect → fix → remediate”
 
 Because this workflow scans **full git history**, a committed secret pattern can keep failing later runs on that same branch even after deletion.
 
@@ -43,8 +43,9 @@ Use this exact flow (matches how this repo is being demonstrated):
 1. **Detect:** Create and push a branch named `demo-detect` with a demo file containing a detectable fake secret pattern.
 2. **Show detection:** Confirm the Gitleaks job fails in Actions.
 3. **Fix:** Delete the demo file and commit the removal.
-4. **Pass (operational remediation):** Open a clean branch from `main` (without leaked commit history) and show checks passing there.
-5. **Cleanup:** Delete demo branches after presentation.
+4. **Important behavior:** The `demo-detect` PR will still fail because full-history scanning still includes the earlier leaked commit.
+5. **Pass (operational remediation):** Open a clean branch from `main` (without leaked commit history) and show checks passing there.
+6. **Cleanup:** Delete demo branches after presentation.
 
 Live demo commands:
 
@@ -64,6 +65,8 @@ git add -u
 git commit -m "demo: remove fake secret"
 git push
 
+# Note: this branch will still fail due to full-history scanning.
+
 # Pass from clean branch
 git checkout main
 git pull
@@ -75,6 +78,22 @@ git checkout main
 git branch -D demo-detect demo-clean-pass
 git push origin --delete demo-detect demo-clean-pass
 ```
+
+### If you must make the same branch pass
+
+Yes, rewriting history can fix this case, because it removes the leaked commit itself from the branch history scanned by Gitleaks.
+
+```bash
+# Remove demo file from all history (example)
+git filter-repo --path demo-secret.txt --invert-paths
+git push --force --all
+git push --force --tags
+```
+
+Notes:
+- Use history rewrite only when you really need to preserve that same branch/PR path.
+- Teammates must re-sync (re-clone or reset) after force-pushed history.
+- If any real secret was exposed, rotate/revoke it immediately.
 
 Always rotate immediately if a real secret is ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform secret store for runtime values.
 
