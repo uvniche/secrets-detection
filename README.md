@@ -18,36 +18,62 @@ Workflow file: `[.github/workflows/security-ci.yml](.github/workflows/security-c
 
 The Gitleaks job installs the [official CLI](https://github.com/gitleaks/gitleaks) and scans the full git history. It avoids `[gitleaks/gitleaks-action](https://github.com/gitleaks/gitleaks-action)`’s default push range (`before^..after`), which breaks when the push’s `before` commit is the **root** commit—`before^` does not exist, so Git reports `unknown revision` and the action exits with an error even when no leaks are found.
 
-## Sample code
+## Local
 
-The sample Python package under `src/secure_api/` contains simple security-focused helpers (for example, secret redaction). It is intentionally minimal so the focus stays on CI security gates.
+Run these macOS commands from the repository root.
 
-## Local development
+### 1) Setup (one-time)
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
 cp .env.example .env       # optional local env values for experiments
-pytest -q
-bandit -r src -c pyproject.toml
-pip install pip-audit && pip-audit -r requirements.txt
 ```
 
-## Demonstrating “detect → fix → remediate”
+### 2) Local equivalent of CI Job: `gitleaks` (secrets scan)
 
-Because this workflow scans **full git history**, a committed secret pattern can keep failing later runs on that same branch even after deletion.
+Purpose: detect committed secrets/tokens in repository history.
 
-Use this exact flow (matches how this repo is being demonstrated):
+```bash
+gitleaks detect --source . --redact --verbose --exit-code 2
+```
 
-1. **Detect:** Create and push a branch named `demo-detect` with a demo file containing a detectable fake secret pattern.
-2. **Show detection:** Confirm the Gitleaks job fails in Actions.
-3. **Fix:** Delete the demo file and commit the removal.
-4. **Important behavior:** The `demo-detect` PR will still fail because full-history scanning still includes the earlier leaked commit.
-5. **Pass (operational remediation):** Open a clean branch from `main` (without leaked commit history) and show checks passing there.
-6. **Cleanup:** Delete demo branches after presentation.
+### 3) Local equivalent of CI Job: `python-security`
 
-Live demo commands:
+Purpose: run tests + Python static analysis + dependency audit.
+
+```bash
+pytest -q
+bandit -r src -c pyproject.toml
+pip-audit -r requirements.txt --desc
+```
+
+### 4) Local equivalent of CI Job: `trivy` (filesystem CVE scan)
+
+Purpose: scan repo filesystem for CRITICAL/HIGH vulnerabilities.
+
+```bash
+trivy fs --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 .
+```
+
+### Notes for local runs
+
+- `gitleaks` and `trivy` commands require those CLIs to be installed locally.
+- In GitHub Actions, installation/execution is handled by the workflow jobs.
+
+## GitHub Demo
+
+This section demonstrates GitHub Actions detection behavior using a fake secret pattern.  
+It is separate from normal local development usage.
+
+1. **Detection setup:** Create and push the `demo-detect` branch with a test file that contains a known fake secret pattern.
+2. **CI verification:** Verify that the Gitleaks check fails in GitHub Actions for the demo branch.
+3. **Clean-branch validation:** Create a fresh branch from `main` with no demo leak history and verify that checks pass.
+4. **Cleanup:** Remove the temporary demo branches after validation is complete.
+
+Demo commands:
 
 ```bash
 # Detect
@@ -58,14 +84,6 @@ printf "AWS_SECRET_ACCESS_KEY_EXAMPLE=ABCD1234EFGH5678IJKL9012MNOP3456QRST7890\n
 git add demo-secret.txt
 git commit -m "demo: add detectable secret pattern"
 git push -u origin demo-detect
-
-# Fix on same branch
-rm demo-secret.txt
-git add -u
-git commit -m "demo: remove fake secret"
-git push
-
-# Note: this branch will still fail due to full-history scanning.
 
 # Pass from clean branch
 git checkout main
@@ -79,29 +97,7 @@ git branch -D demo-detect demo-clean-pass
 git push origin --delete demo-detect demo-clean-pass
 ```
 
-### If you must make the same branch pass
-
-Yes, rewriting history can fix this case, because it removes the leaked commit itself from the branch history scanned by Gitleaks.
-
-```bash
-# Remove demo file from all history (example)
-git filter-repo --path demo-secret.txt --invert-paths
-git push --force --all
-git push --force --tags
-```
-
-Notes:
-- Use history rewrite only when you really need to preserve that same branch/PR path.
-- Teammates must re-sync (re-clone or reset) after force-pushed history.
-- If any real secret was exposed, rotate/revoke it immediately.
-
 Always rotate immediately if a real secret is ever exposed, and use **GitHub Actions [encrypted secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)** or your platform secret store for runtime values.
-
-## GitHub setup
-
-1. Create a repository on GitHub and push this project.
-2. Ensure **Actions** are enabled (repository **Settings → Actions**).
-3. Optional: add repository secrets if you later add deploy/runtime jobs that require them.
 
 ## Requirements
 
