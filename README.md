@@ -2,14 +2,11 @@
 
 This repository demonstrates a **GitHub Actions** pipeline that runs on every push and pull request to `main` / `master`. It fails the workflow when leaked secrets, high-severity dependency issues, or critical/high filesystem findings are detected.
 
-It also publishes SARIF results (Gitleaks, Bandit, Trivy) to GitHub code scanning on trusted events, so findings are visible in the repository Security views (not just raw CI logs).
-
 ## What runs in CI
 
 
 | Job                 | Tool                                             | Purpose                                                                         |
 | ------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------- |
-| **Code scanning**   | [CodeQL](https://github.com/github/codeql-action) | Python always; JavaScript/TypeScript when matching source files exist           |
 | **Secrets scan**    | [Gitleaks](https://github.com/gitleaks/gitleaks) | Detects API keys, tokens, and other secrets in git history                      |
 | **Python security** | [Bandit](https://github.com/PyCQA/bandit)        | Static analysis for common Python security mistakes                             |
 | **Dependencies**    | [pip-audit](https://pypi.org/project/pip-audit/) | Reports known vulnerabilities in pinned dependencies                            |
@@ -18,13 +15,6 @@ It also publishes SARIF results (Gitleaks, Bandit, Trivy) to GitHub code scannin
 
 
 Workflow file: `[.github/workflows/security-ci.yml](.github/workflows/security-ci.yml)`.
-
-## SARIF / GitHub code scanning output
-
-- The workflow generates SARIF files for Gitleaks and Trivy directly, converts Bandit JSON output to SARIF, and uploads all reports via `github/codeql-action/upload-sarif@v4`.
-- CodeQL always analyzes Python and conditionally analyzes JavaScript/TypeScript when matching source files are present.
-- Upload runs with `if: always()` so results are published even when a scan step fails and blocks the job.
-- For security reasons, SARIF upload is skipped on fork-origin pull requests where the workflow token cannot write code scanning alerts.
 
 The Gitleaks job installs the [official CLI](https://github.com/gitleaks/gitleaks) and scans the full git history. It avoids `[gitleaks/gitleaks-action](https://github.com/gitleaks/gitleaks-action)`’s default push range (`before^..after`), which breaks when the push’s `before` commit is the **root** commit—`before^` does not exist, so Git reports `unknown revision` and the action exits with an error even when no leaks are found.
 
@@ -72,7 +62,6 @@ trivy fs --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 .
 
 - `gitleaks` and `trivy` commands require those CLIs to be installed locally.
 - In GitHub Actions, installation/execution is handled by the workflow jobs.
-- JavaScript/TypeScript security checks run conditionally in CI through CodeQL when JS/TS source files exist.
 
 ## GitHub Demo
 

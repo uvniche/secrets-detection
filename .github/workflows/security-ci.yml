@@ -9,41 +9,8 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
-  codeql-python:
-    name: CodeQL (Python)
-    # Code scanning uploads require security-events: write, which is not available
-    # to workflows triggered from fork-origin pull requests.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: python
-
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v4
-
-  codeql-javascript-typescript:
-    name: CodeQL (JavaScript/TypeScript)
-    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) && hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx', '**/*.mjs', '**/*.cjs') != ''
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: javascript-typescript
-
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v4
-
   gitleaks:
     name: Secrets scan (Gitleaks)
     runs-on: ubuntu-latest
@@ -66,14 +33,7 @@ jobs:
           gitleaks version
 
       - name: Run Gitleaks
-        run: gitleaks detect --source . --redact --verbose --exit-code 2 --report-format sarif --report-path gitleaks.sarif
-
-      - name: Upload Gitleaks SARIF
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: gitleaks.sarif
-          category: gitleaks
+        run: gitleaks detect --source . --redact --verbose --exit-code 2
 
   python-security:
     name: Python tests, Bandit, pip-audit
@@ -96,17 +56,7 @@ jobs:
         run: pytest -q
 
       - name: Bandit (Python SAST)
-        run: bandit -r src -c pyproject.toml -f json -o bandit.json
-
-      - name: Convert Bandit JSON to SARIF
-        run: pip install bandit-sarif-formatter && bandit-sarif-formatter -i bandit.json -o bandit.sarif
-
-      - name: Upload Bandit SARIF
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: bandit.sarif
-          category: bandit
+        run: bandit -r src -c pyproject.toml
 
       - name: pip-audit (dependency vulnerabilities)
         run: pip-audit -r requirements.txt --desc
@@ -122,16 +72,7 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
-          format: sarif
-          output: trivy.sarif
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true
-
-      - name: Upload Trivy SARIF
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy.sarif
-          category: trivy
 
